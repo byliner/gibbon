@@ -1,6 +1,7 @@
 require 'httparty'
 require 'json'
 require 'cgi'
+require 'gibbon/error_code'
 
 class Gibbon
   include HTTParty
@@ -9,7 +10,14 @@ class Gibbon
 
   attr_accessor :api_key, :api_endpoint, :timeout, :throws_exceptions
 
-  MailChimpError = Class.new(StandardError)
+  class MailChimpError < StandardError
+    attr_accessor :code
+
+    def initialize(message = "MailChimpError", code = nil)
+      super(message)
+      self.code = code
+    end
+  end
 
   def initialize(api_key = nil, default_parameters = {})
     @api_key = api_key || self.class.api_key || ENV['MAILCHIMP_API_KEY']
@@ -46,7 +54,7 @@ class Gibbon
     parsed_response = JSON.parse("[#{response.body}]").first
 
     if should_raise_for_response?(parsed_response)
-      raise MailChimpError.new("MailChimp API Error: #{parsed_response["error"]} (code #{parsed_response["code"]})")
+      raise MailChimpError.new("MailChimp API Error: #{parsed_response["error"]}", error_code(parsed_response))
     end
 
     parsed_response
@@ -76,6 +84,10 @@ class Gibbon
 
   def should_raise_for_response?(response)
     @throws_exceptions && response.is_a?(Hash) && response["error"]
+  end
+  
+  def error_code(resp)
+    resp["code"].to_i
   end
 
   def base_api_url
@@ -128,7 +140,7 @@ class GibbonExport < Gibbon
       first_line = JSON.parse(lines.first) if lines.first
       
       if should_raise_for_response?(first_line)
-        raise MailChimpError.new("MailChimp Export API Error: #{first_line["error"]} (code #{first_line["code"]})")
+        raise MailChimpError.new("MailChimp Export API Error: #{first_line["error"]}", error_code(first_line))
       end
     end
 

@@ -186,6 +186,17 @@ class TestGibbon < Test::Unit::TestCase
       end
     end
     
+    should "set the error code in the exception" do
+      @gibbon.throws_exceptions = true
+      code = 220
+      Gibbon.stubs(:post).returns(Struct.new(:body).new({'error' => 'bad things', 'code' => code.to_s}.to_json))
+      begin
+        @gibbon.say_hello
+      rescue Gibbon::MailChimpError => e
+        assert_equal code, e.code
+      end
+    end
+    
     should "not raise exception if the api returns no response body" do
       Gibbon.stubs(:post).returns(Struct.new(:body).new(nil))
       assert_nil @gibbon.say_hello
@@ -231,6 +242,18 @@ class TestGibbon < Test::Unit::TestCase
       end
     end
 
+    should "set the error code in the exception" do
+      @gibbon.throws_exceptions = true
+      code = 123
+      params = {:body => @body, :timeout => 30}
+      GibbonExport.stubs(:post).returns(Struct.new(:body).new({'error' => 'bad things', 'code' => code.to_s}.to_json))
+
+      begin
+        @gibbon.say_hello(@body)
+      rescue Gibbon::MailChimpError => e
+        assert_equal code, e.code
+      end
+    end
   end
 
   private
